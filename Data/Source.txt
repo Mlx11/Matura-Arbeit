@@ -1,0 +1,10 @@
+Diese Datei enthält die Quellen der zur Generierung dieser Daten benützten Bilder oder Datensätzen:
+
+Iris
+Die Daten entsprechen dem Iris-Datensatz aus der open-source Bibliothek sklearn.
+Scikit-learn: Machine Learning in Python, Pedregosa et al., JMLR 12, pp. 2825-2830, 2011.
+
+Leaves
+Die Bilder stammen aus dem im Folgenden Paper verwendeten Datensatz.
+Wu, Stephen and Bao, Forrest and Xu, Eric and Wang, Yu-Xuan and Chang, Yi-Fan and Xiang, Qiao-Liang: A Leaf Recognition Algorithm for Plant Classification Using Probabilistic Neural Network, 2007
+Q. Xiang et al., "A Leaf Recognition Algorithm for Plant Classification Using Probabilistic Neural Network", 2007 IEEE International Symposium on Signal Processing and Information Technology, Giza, 2007, pp. 11-16.
