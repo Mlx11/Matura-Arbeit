@@ -24,6 +24,7 @@ from multiprocessing import Pool
 class Deskriptor:
     # Deskriptor mit nur globalen Deskriptoren
     #Deskriptoren aus https://github.com/Gogul09/image-classification-python
+    # In der Arbeit wurde Des2 verwendet
     
     #constants
     IMAGESIZE = tuple((100,100))

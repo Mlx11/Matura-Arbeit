@@ -183,7 +183,8 @@ class Window:
             if self.X is not None:
                 pred = self.svm.predict(self.X)
                 if self.y is not None:
-                    self.Output["text"] = str(np.where(pred == self.y, 1, 0).sum()) + " of " + str(self.y.shape[0]) + " corect!"
+                    percent = str(100 * np.where(pred ==  self.y, 1, 0).sum() / self.y.shape[0])[:5] + "%"
+                    self.Output["text"] = str(np.where(pred == self.y, 1, 0).sum()) + " von " + str(self.y.shape[0]) + " korrekt! Dies sind " + percent
                 else:
                     new = []
                     for i in range(0, len(pred), 5):
