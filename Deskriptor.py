@@ -11,7 +11,7 @@ import mahotas
 import os
 import matplotlib.pyplot as plt
 from SVMs import MultiSVM, SVM
-from Kernels import LinearKernel, PolyKernel, RBFKernel, MyKernel1, MyKernel2, MyKernel3
+from Kernels import *
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import sklearn.model_selection
@@ -22,6 +22,7 @@ from sklearn.cluster import KMeans
 from multiprocessing import Pool
 
 class Deskriptor:
+    # Deskriptor mit nur globalen Deskriptoren
     #Deskriptoren aus https://github.com/Gogul09/image-classification-python
     
     #constants
@@ -36,6 +37,7 @@ class Deskriptor:
                 
     
     def colhist(self):
+        #colorhistogram ausgelagert
         colhistogram = cv2.calcHist([cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)], [0,1,2], None, [Deskriptor.BINS, Deskriptor.BINS, Deskriptor.BINS], [0, 256, 0, 256, 0, 256])
         return cv2.normalize(colhistogram, colhistogram).flatten()
     
@@ -126,9 +128,9 @@ class Deskriptor:
 
 #-----------------------------------------------------------------------------------------------------
 
-
+# Deskriptor mit globalen und lokalen Deskriptoren
 class Des2(Deskriptor):
-    NCLUSTER = 8
+    NCLUSTER = 240
     SURFPARAM = 400
     def __init__(self, imgPath, des, kmeansSurf, kmeansOrb, kmeansSift):
         img = cv2.imread(imgPath)
@@ -139,8 +141,8 @@ class Des2(Deskriptor):
         self.des = des
         self.kmeansSurf, self.kmeansOrb, self.kmeansSift = kmeansSurf, kmeansOrb, kmeansSift
         
-    @staticmethod   
-    def getXY(src="D:/Developement/Datasets/Leaves/", save=False, name="" , pcaComponents=16, des=False):
+    @staticmethod 
+    def getXY(src="D:/Developement/Datasets/Leaves/", save=False, name="" , pcaComponents=24, des=False):
         # Deskriptoren aus https://github.com/Gogul09/image-classification-python
         kmeansSurf, kmeansOrb, kmeansSift = Des2.initLocalDescriptors(src)
         X = []
@@ -166,9 +168,10 @@ class Des2(Deskriptor):
         if save:
             np.save(name+"_X", X_std)
             np.save(name+"_y", y)
+        return X_std, y
         
     @staticmethod
-    def getXYSingle(src="D:/Developement/Datasets/Leaves/", save=False, name="" , pcaComponents=16, des=False):
+    def getXYSingle(src="D:/Developement/Datasets/Leaves/", save=False, name="" , pcaComponents=24, des=False):
         # für jedes bild einzeln & für alle Zusammen
         kmeansSurf, kmeansOrb, kmeansSift = Des2.initLocalDescriptors(src)
         X = []
@@ -184,7 +187,7 @@ class Des2(Deskriptor):
                 y.append(nr)  
         X = np.array(X)
         y = np.array(y)
-        std_clf = make_pipeline(StandardScaler(), PCA(n_components=16))  #, GaussianNB()
+        std_clf = make_pipeline(StandardScaler(), PCA(n_components=pcaComponents))  #, GaussianNB()
         std_clf.fit(X, y)
         pca_std = std_clf.named_steps['pca']
         scaler = std_clf.named_steps['standardscaler']
@@ -193,21 +196,24 @@ class Des2(Deskriptor):
             np.save(name+"_X", X_std)
             np.save(name+"_y", y)
             
-        for nr, folder in enumerate(os.listdir(src)):
-            nr+=1 #klasse startet bei 1 nicht 0
-            print("[+] processing ", folder)
-            path = src + folder
-            for imgpath in os.listdir(path):
-                d = Des2(path+"/"+imgpath, des, kmeansSurf, kmeansOrb, kmeansSift)
-                v = d.getVector()
-                Xsave = pca_std.transform(scaler.transform(np.array([v])))
-                ysave = np.array([nr])
-                np.save(path+"/"+imgpath+"_X", Xsave)
-                np.save(path+"/"+imgpath+"_y", ysave)
-                    
+        if save:
+            for nr, folder in enumerate(os.listdir(src)):
+                nr+=1 #klasse startet bei 1 nicht 0
+                print("[+] processing ", folder)
+                path = src + folder
+                for imgpath in os.listdir(path):
+                    d = Des2(path+"/"+imgpath, des, kmeansSurf, kmeansOrb, kmeansSift)
+                    v = d.getVector()
+                    Xsave = pca_std.transform(scaler.transform(np.array([v])))
+                    ysave = np.array([nr])
+                    np.save(path+"/"+imgpath+"_X", Xsave)
+                    np.save(path+"/"+imgpath+"_y", ysave)
+        return X_std,y
+                        
      
     @staticmethod 
     def initLocalDescriptors(src):
+        # initialisiert die lokalen Deskriptoren und kmenas
         liSurf = []
         liOrb = []
         liSift = []
@@ -329,75 +335,161 @@ class Des2(Deskriptor):
                 stack.append(chv)
                 
             stacked = np.hstack(stack)
+            self.vector = stacked
             return stacked
         
 
         
+#----------------------------------------------------------------------------------
+            
+def gridSearch():
+        filename = "file.txt"
+        PCAComps_li = [12,18, 24, 30, 36, 42]
+        clusters_li = [90,120,150,180, 210, 240]
+        kernel_li = [LinearKernel(), RBFKernel(), PolyKernel(p=2, c=1), LinearKernel()+RBFKernel(), PolyKernel(p=3, c=1)]
+        c_li = [None]
+        attemptsPerParameter = 1
+        testSize = 0.3
         
+        f = open(filename, "a")
+        for n in PCAComps_li:
+            for clusters in clusters_li:
+                f.write("----------------------------------------")
+                f.write("Data: PCA-Components = {" + str(n) + "{, clusters = {" + str(clusters) + "\n")
+                print("Data: PCA-Components = " + str(n) + ", clusters = " + str(clusters) + "\n")
+                try:
+                    Des2.NCLUSTER = clusters
+                    des = [True, True, True, True, True, True]
+                    name = "test"
+                    X, y = Des2.getXY(src="D:/Developement/py/Final/Data/Leaves_ImagesOnly/", save=False, name=name , pcaComponents=n, des=des)
+                except Exception as e: 
+                    print("Error at n: ", n,"clusters: " , clusters)
+                    print(e)
+
+                    for C in c_li:
+                        for K in kernel_li:
+                            avgscore = 0 
+                            for rs in range(attemptsPerParameter):
+                                try:                                     #print("C = " + str(C) + ", Kernel = " + str(K)+ "\n")
+                                    X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=testSize)
+                                    svm = MultiSVM(kernel=K, C=C)
+                                    svm.fit(X_train, y_train)
+                                    
+                                    score = svm.score(X_test, y_test)
+                                    avgscore += score
+                                except Exception as e:
+                                    print("Error at Kernel: ", str(K), ", C: ", str(C))
+                                    print(e)
+                            avgscore = avgscore / attemptsPerParameter
+                            f.write("score = {" + str(avgscore) + "{ C = {" + str(C) + "{, Kernel = {" + str(K)+ "\n")
+                            print("score: ", str(avgscore))
+        f.close()
+        
+        # erstellte Datei auslesen und Daten in Pandas DF anzeigen
+        f = open(filename, "r")
+        dfli = []
+        for line in f.readlines():
+            li = line.split("{")
+            if len(li)==4:
+                pcaC = float(li[1])
+                clusters = float(li[3][:-1])
+            else:
+                score = float(li[1])
+                score = str(score)[:5]
+                try:
+                    C = float(li[3])
+                except:
+                    C = None
+                Kernel = li[5][:-1]
+                dfli.append([score, pcaC, clusters, C, Kernel])
+        dfnp = np.array(dfli)
+        df = pd.DataFrame(dfnp, columns=["score","PCA-Comps", "Clusters", "C", "Kernel"])
+        df = df.sort_values("score")
+        print(df)
+        
+def averageDetailedScore():
+    attemptsPerParameter = 2
+    testSize = 0.3
+    kernel = LinearKernel()
+    C = None    
+            
+            
+    X = np.load("Best_Parameters_PCAComps24_clusters120_correct_X.npy")
+    y = np.load("Best_Parameters_PCAComps24_clusters120_correct_y.npy")
+    summ = np.zeros(np.unique(y).shape[0])
+    for count in range(attemptsPerParameter):
+        X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=testSize)
+        svm = MultiSVM(kernel=kernel, C=C)
+        svm.fit(X_train, y_train)
+        dscore = svm.detailedScore(X_test, y_test)
+        array = np.array(dscore)
+        for line in array:
+            summ[int(line[0])] += line[1]
+        
+    print("Average: ", summ/attemptsPerParameter)   
+        
+def dfToLatex(df):
+    # Pandas df zu Latex-Tabelle
+    string = ""
+    array = np.array(df)
+    for line in array: 
+        for element in line:
+            string += str(element) + " & "
+        string = string[:-2]
+        string += " \\\\ \n"
+    print(string)
         
         
 if __name__ == "__main__":
-    if False:
-        results = []
-        for ORB in [True]:
-            for n in [24]:
-                for clusters in [90]:
-                    try:
-                        Des2.NCLUSTER = clusters
-                        des = [True, True, True, ORB, True, True]
-                        name = "test"
-                        Des2.getXYSingle(src="D:/Developement/Datasets/Leaves_LocalDescriptors/", save=True, name=name , pcaComponents=n, des=des)
-                        
-                        #X = np.load(r"Data/Leaves/X_std_n16.npy")
-                        #y = np.load(r"Data/Leaves/y_n16.npy")
-                        
-                        X = np.load(name+"_X.npy")
-                        y = np.load(name+"_y.npy")
-                        
-                        X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.30, random_state=1)
-                        svm = MultiSVM()
-                        svm.fit(X_train, y_train)
-                    
-                        score = svm.score(X_test, y_test)
-                        results.append([score, ORB, n, clusters])
-                        print(results[-1])
-                    except Exception as e: 
-                        print("Error at: ", [score, ORB, n, clusters], "\n" )
-                        print(e)
-        res = np.array(results)
-        try:
-            labels = ["Score", "ORB", "PCA-comps","clusters"]
-            df = pd.DataFrame.from_records(res, columns=labels)
-            df = df.sort_values(by=['Score'])
-            print(df)
-            df.to_csv(path_or_buf="df2.csv")
-        except Exception as e:
-            print(e)
-            print(res)
-            
-    name = "LD_n24_c90_noCHist"
-    X = np.load(name+"_X.npy")
-    y = np.load(name+"_y.npy")
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.30, random_state=19)
-    svm = MultiSVM()
+    #Dieser Code berchnet X und y, teilt sie in Test- und Trainingsdaten und trainiert eine SVM darauf
+    print("running")
+    store = False # True falls gespeichert werden soll
+    src = "D:/Developement/py/Final/Data/Leaves_ImagesOnly/" # Falls gespeichert wird unbedingt vorher ImagesOnly Ordner kopieren, umbenennen und den neuen Ordner als src angeben!
+    name = "name"
+    Des2.NCLUSTERS = 120 # Anzahl CLuster des k-means Algorithmus => Anzahl verschiedene von den lokalen Deskriptoren gefundene Punkte
+    des = [True, True, True, True, True, True] # Hiermit können einzelne Deskriptoren deaktiviert werden, Form: Hu-Momente, Haralick, SURF, ORB, SIFT, color histogram
+    pcaComponents = 24 # Anzahl Hauptkomponenten, auf welche die PCA die Daten reduziert.
+    X,y = Des2.getXYSingle(src=src, save=store, name=name , pcaComponents=pcaComponents, des=des) 
+    #X = np.load(name + "_X.npy")
+    #y = np.load(name + "_y.npy")
+    X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.3)
+    svm = MultiSVM(C=None, kernel=LinearKernel())
     svm.fit(X_train, y_train)
+
+    if store:
+        np.save("X_test.npy", X_test)
+        np.save("X_train.npy",X_train)
+        np.save("y_test.npy", y_test)
+        np.save("y_train.npy", y_train)
+        svm.save("SVM.pkl")
+    print(svm.score(X_test, y_test))
     
-    np.save(name+"_X_train", X_train)
-    np.save(name+"_X_test", X_test)
-    np.save(name+"_y_train", y_train)
-    np.save(name+"_y_test", y_test)
-    svm.save("SVM_"+name)
-   
-    score = svm.score(X_test, y_test)
-    print(score)
     
-                  
-#Data without PCA:
-#[0.28097731239092494, True, 16, 4]
-#[0.16230366492146597, True, 16, 8]
-#[0.09947643979057597, True, 16, 12]
-#[0.16230366492146597, True, 16, 16]
-#[0.1169284467713787, True, 16, 32]
-#[0.11169284467713791, True, 16, 48]
-#[0.054101221640488695, True, 16, 64]              
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

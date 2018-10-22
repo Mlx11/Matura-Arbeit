@@ -51,12 +51,11 @@ class SVM:
     def fit(self, X, y):
         # trainiert die SVM auf Trainigsdaten
         n_samples, n_features = X.shape
-        # Compute the Gram matrix
+        # Gram Matrix
         K = np.zeros((n_samples, n_samples))
         for i in range(n_samples):
            for j in range(n_samples):
                K[i,j] = self.kernel.calculate(X[i], X[j])
-        # construct P, q, A, b, G, h matrices for CVXOPT
         P = cvxopt.matrix(np.outer(y,y) * K)
         q = cvxopt.matrix(np.ones(n_samples) * -1)
         A = cvxopt.matrix(y, (1,n_samples), 'd')
@@ -67,19 +66,20 @@ class SVM:
         else:              # soft-margin SVM
            G = cvxopt.matrix(np.vstack((np.diag(np.ones(n_samples) * -1), np.identity(n_samples))))
            h = cvxopt.matrix(np.hstack((np.zeros(n_samples), np.ones(n_samples) * self.C)))
-        # solve QP problem
+        # Löst das OPT-Problem
         cvxopt.solvers.options['show_progress'] = False
         solution = cvxopt.solvers.qp(P, q, G, h, A, b)
-        # Lagrange multipliers
+        # Lagrange Multiplikatoren
         a = np.ravel(solution['x'])
-        # Support vectors have non zero lagrange multipliers
-        sv = a > 1e-5 # some small threshold
+        # SV Bedingung
+        sv = a > 1e-5 
         
         
-        #if no support vectors found
+        # Falls keine SV gefunden wurden
         if not True in sv:
             sv = a == a.max()
         
+        #speichern der Resultate
         self.X = X
         self.y = y
         self.a = a
@@ -169,9 +169,8 @@ class SVM:
     def plotDecisionRegions(self, X,y, title="Decision Regions"):
         # Zeigt die Trennung zweier Klassen eines 2d-Datensatzes
         try:            
-            h = .01  # step size in the mesh
-            # create a mesh to plot in
-            #margin: size of area shown
+            h = .01  # Je kleiner, desto genauer die trennende Linie
+            #margin: minimaler Abstand Punkt und Rand
             margin = 1
             x_min, x_max = X[:, 0].min() - margin, X[:, 0].max() + margin
             y_min, y_max = X[:, 1].min() - margin, X[:, 1].max() + margin
@@ -184,17 +183,18 @@ class SVM:
             Z = np.array(Z)
             Z = Z.reshape(xx.shape)
             plt.contour(xx, yy, Z, colors=("black","green","blue"))
-            # Plot the training points
+            
             X1 = X[np.where(y==1)]
             X2 = X[np.where(y==-1)]
             
             plt.scatter(X1[:, 0], X1[:, 1], c="red",edgecolor='k', label="Klasse 1")
             plt.scatter(X2[:, 0], X2[:, 1], c="blue",edgecolor='k', label="Klasse -1")
+            
             #plot sv
             #plt.scatter(self.sv_X[:, 0], self.sv_X[:, 1], c="yellow",edgecolor='k', label="sv")
             
-            plt.xlabel('Sepal length')
-            plt.ylabel('Sepal width')
+            plt.xlabel('x')
+            plt.ylabel('y')
             ax.legend()
             if self.C is None:
                 plt.title(title + " Hard Margin")
@@ -249,6 +249,7 @@ class MultiSVM():
         self.C = C
     
     def fitSVM(self, X, y, c1, c2):
+        # trainiert eine svm um c1 und c2 zu unterscheiden
         X1 = X[np.isin(y, [c1,c2])]
         y1 = y[np.isin(y, [c1,c2])]               
         y1 = np.where(y1==c1, 1, -1)
@@ -258,6 +259,7 @@ class MultiSVM():
         
         
     def fit(self, X, y):
+        #trainiert eine SVM
         X = np.array(X)
         y = np.array(y)
         self.classes = np.unique(y)
