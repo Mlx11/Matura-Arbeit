@@ -35,11 +35,11 @@ Im Ordner Data sind die für das Training der SVM benötigten Daten gespeichert.
 ## User Interface
 Dieser Abschnitt erläutert die Funktionsweise des Interfaces, welches durch die Ausführung der Datei UI.py geöffnet wird.
 
-![alt text](InterfaceCreate.png)
+![alt text](InterfaceLoad.png)
 
 Unter *"SVM & Testdaten laden"* können gespeicherte SVMs und Daten geladen werden. Um ein oder mehrere Bild/er zu klassifiziern, muss mindestens eine SVM oder MultiSVM und X-Daten geladen sein. Werden zusätzlich noch y-Daten angegeben, so wird nicht die Klasse der Bilder sondern die Korrektklassifizierungsrate ausgegeben. 
 
-![alt text](InterfaceLoad.png)
+![alt text](InterfaceCreate.png)
 
 *"SVM erstellen"* erlaubt die Erstellung einer SVM mit gegebenen Parametern C und Kernel. Für eine hard-margin SVM muss die Checkbox markiert werden. Anschliessend müssen die Trainingsdaten geladen werden. Die erstellte SVM ist danach unter  *"SVM & Testdaten laden"*  geladen.
 Je nach Anwendung empfiehlt sich anstelle des Interfaces direkt Pythoncode zu verwenden.
